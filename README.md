@@ -6,6 +6,7 @@ A collection of plugins and integrations for Bitbucket Pipelines.
 
 | Plugin | Description |
 |--------|-------------|
+| [pipelines-hub](./pipelines-hub) | Local dashboard (Docker/OrbStack) for GitHub Actions + Bitbucket Pipelines across accounts and orgs: runs, live logs, environments, and an HTTP MCP endpoint |
 | [bitbucket-pipelines-mcp](./bitbucket-pipelines-mcp) | MCP server for AI assistants to manage Bitbucket Cloud |
 
 ## Overview

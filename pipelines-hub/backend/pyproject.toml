@@ -1,0 +1,31 @@
+[project]
+name = "pipelines-hub"
+version = "0.1.0"
+description = "Panel local de pipelines y despliegues de GitHub Actions y Bitbucket Pipelines"
+authors = [
+    { name = "Felipe Vega", email = "vega.herrera.felipe@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "cryptography>=50.0.1",
+    "fastapi>=0.142.0",
+    "fastmcp>=4.0.10",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy[asyncio]>=2.1.1",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=1", "respx>=0.22", "ruff>=0.13"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

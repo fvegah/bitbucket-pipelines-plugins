@@ -58,3 +58,9 @@ dmypy.json
 
 # Ruff
 .ruff_cache/
+
+# pipelines-hub
+pipelines-hub/**/node_modules/
+pipelines-hub/frontend/dist/
+pipelines-hub/backend/data/
+pipelines-hub/.env

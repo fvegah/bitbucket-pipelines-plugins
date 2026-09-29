@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a monorepo containing plugins for Bitbucket Pipelines. Currently contains:
 
+- **pipelines-hub**: servicio local (FastAPI + Vue, corre en OrbStack con `docker compose up -d --build` desde `pipelines-hub/`) que sigue GitHub Actions y Bitbucket Pipelines de varias cuentas/orgs, con logs, entornos y MCP HTTP en `/mcp`. Ver `pipelines-hub/README.md`. Tests: `cd pipelines-hub/backend && uv run pytest`.
+
 - **bitbucket-pipelines-mcp**: A Model Context Protocol (MCP) server for Bitbucket Cloud that enables AI assistants to manage pipelines, pull requests, branches, and repositories.
 
 ## Commands

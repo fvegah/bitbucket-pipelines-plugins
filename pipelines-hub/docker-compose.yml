@@ -1,0 +1,23 @@
+# Pipelines Hub en OrbStack:
+#   docker compose up -d --build
+#   → https://pipelines.orb.local   (o http://localhost:8095)
+name: pipelines-hub
+
+services:
+  hub:
+    build: .
+    image: pipelines-hub:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8095:8000"
+    volumes:
+      - hub-data:/data
+    env_file:
+      - path: .env
+        required: false
+    labels:
+      dev.orbstack.domains: pipelines.orb.local
+      dev.orbstack.http-port: "8000"
+
+volumes:
+  hub-data:
