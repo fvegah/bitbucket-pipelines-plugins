@@ -54,6 +54,42 @@ Bitbucket da ~1.000 requests/hora por usuario, así que no se consulta cada repo
 El botón **Sincronizar** fuerza todo en el próximo ciclo. Las cadencias se ajustan con variables
 `HUB_*` (ver `.env.example`).
 
+## Kubernetes (solo lectura)
+
+Usa tu kubeconfig local (`~/.kube` montado en el contenedor, solo lectura). Para EKS genera el
+token con botocore igual que `aws eks get-token`, con las credenciales de `~/.aws` montadas: no
+hace falta la CLI de AWS en la imagen.
+
+- **Resumen**: nodos listos, uso de CPU/memoria del cluster (metrics-server), lo que requiere
+  atención (pods en CrashLoop/ImagePull/Pending, deployments incompletos, cronjobs cuyo último
+  job falló, nodos con presión), pods con más reinicios, namespaces y eventos Warning.
+- **Pods, Deployments, CronJobs, Jobs, StatefulSets/DaemonSets, Red (Ingress/Services), Config
+  (ConfigMaps/Secrets), Nodos y Eventos**, con namespace, búsqueda y "solo con problemas".
+- Panel de detalle: resumen, pods relacionados, ejecuciones de un cronjob, eventos, YAML y **logs**
+  del pod (por contenedor, en vivo o del contenedor anterior tras un reinicio).
+- El código solo hace GET: aunque tu usuario sea admin del cluster, el panel no puede cambiar
+  nada. Los **Secrets se muestran sin valores** (solo nombres de claves) y no pasan por la caché.
+
+## Servidores (por SSH, sin agente)
+
+- Se agregan importando un host de `~/.ssh/config` o a mano, con una llave de `~/.ssh` (montado
+  solo lectura) o pegada (se guarda cifrada). La huella del servidor se acepta la primera vez y
+  la conexión se rechaza si cambia.
+- Cada minuto: CPU, carga, memoria, swap y discos, con gráficos de 6 h a 7 días.
+- Foto del sistema: SO y kernel, reinicio pendiente, actualizaciones (y de seguridad), **puertos
+  abiertos** con su proceso y si quedan expuestos a internet (cruzado con ufw), procesos, discos,
+  contenedores, unidades fallidas e intentos de SSH fallidos en 24 h.
+- **Servicios** agrupados por plataforma (Edutecnia, quizkid…): systemd, Docker, Redis
+  (memoria, clientes, keyspace), PostgreSQL (conexiones y tamaño de bases), Sidekiq (colas,
+  ocupados, reintentos, muertos), RabbitMQ (colas sin consumidor), HTTP (código, latencia,
+  vencimiento del certificado), puerto TCP y proceso. **Detectar servicios** propone los que
+  corren en el servidor.
+- **Logs** de cada servicio desde journal, un archivo o `docker logs`: últimas N líneas, filtro
+  hecho en el servidor y seguimiento en vivo.
+- Solo corren comandos de lectura fijos; lo que viene del formulario (unidad, ruta, contenedor,
+  host) se valida y se cita con `shlex`. Las claves de Redis/Postgres van por variable de entorno
+  dentro del script (por stdin), nunca como argumento visible en `ps`.
+
 ## Cloudflare
 
 Cada cuenta de Cloudflare (las "organizaciones" del dashboard) se agrega como un workspace y
@@ -118,7 +154,10 @@ sus Workers y proyectos de Pages aparecen como repos:
 claude mcp add --transport http pipelines-hub https://pipelines.orb.local/mcp/
 ```
 
-Herramientas: `list_runs` (acepta `view`), `list_views`, `get_run`, `get_step_log` (con `tail_lines` y `grep`),
+Herramientas de infraestructura: `k8s_overview`, `k8s_pods`, `k8s_workloads`, `k8s_describe`,
+`k8s_pod_logs`, `k8s_events`, `server_status`, `service_logs`.
+
+Herramientas de CI/CD: `list_runs` (acepta `view`), `list_views`, `get_run`, `get_step_log` (con `tail_lines` y `grep`),
 `list_deployments`, `rerun`, `cancel`, `list_prs`, `get_pr`, `pr_diff`, `comment_pr`,
 `approve_pr`, `merge_pr`.
 
@@ -142,4 +181,5 @@ cd frontend && npm install && npm run dev
 | `frontend/src/views/` | Ejecuciones, detalle con logs, Pull requests, detalle de PR, Entornos, Cuentas |
 
 Sin autenticación propia: el puerto se publica solo en `127.0.0.1` y el dominio `.orb.local` solo
-existe en esta máquina. No exponerlo a una red.
+existe en esta máquina. No exponerlo a una red: además de los tokens de CI, el contenedor ve tu
+kubeconfig, tus credenciales de AWS y tus llaves SSH (montadas solo lectura).

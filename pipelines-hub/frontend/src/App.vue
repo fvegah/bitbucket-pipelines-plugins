@@ -73,6 +73,8 @@ onBeforeUnmount(() => clearInterval(timer))
           <span v-if="overview?.prs?.review" class="count review" :title="`${overview.prs.review} por revisar`">{{ overview.prs.review }}</span>
         </RouterLink>
         <RouterLink to="/entornos" active-class="active">Entornos</RouterLink>
+        <RouterLink to="/k8s" active-class="active" title="Kubernetes"><span class="lbl-long">Kubernetes</span><span class="lbl-short">K8s</span></RouterLink>
+        <RouterLink to="/servidores" :class="{ active: $route.name === 'servers' || $route.name === 'server' }">Servidores</RouterLink>
         <RouterLink to="/cuentas" active-class="active">Cuentas</RouterLink>
       </nav>
       <div class="topbar-right">
@@ -90,7 +92,7 @@ onBeforeUnmount(() => clearInterval(timer))
   </header>
 
   <RouterView v-slot="{ Component, route }">
-    <component :is="Component" :key="route.name === 'run' || route.name === 'pr' ? `${route.name}${route.params.id}` : route.name" @changed="loadOverview" />
+    <component :is="Component" :key="['run', 'pr', 'server'].includes(route.name) ? `${route.name}${route.params.id}` : route.name" @changed="loadOverview" />
   </RouterView>
 
   <div class="toasts" aria-live="polite">
@@ -110,9 +112,10 @@ onBeforeUnmount(() => clearInterval(timer))
 }
 .brand { display: flex; align-items: center; gap: 9px; color: var(--text); font-weight: 700; font-size: 15px; }
 .brand:hover { text-decoration: none; }
-.nav { display: flex; gap: 4px; height: 100%; }
+.nav { display: flex; gap: 4px; height: 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
 .nav a {
-  display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  display: flex; align-items: center; gap: 6px; padding: 0 12px; white-space: nowrap;
   color: var(--text-muted); font-weight: 550; border-bottom: 2px solid transparent; margin-bottom: -1px;
 }
 .nav a:hover { color: var(--text); text-decoration: none; }
@@ -148,8 +151,9 @@ onBeforeUnmount(() => clearInterval(timer))
   .nav a { padding: 0 7px; font-size: 13px; }
   .nav .count { display: none; }
 }
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
   .lbl-long { display: none; }
   .lbl-short { display: inline; }
+  .nav a { padding: 0 9px; }
 }
 </style>

@@ -76,3 +76,24 @@ export const REVIEW_LABEL = {
   commented: 'Comentó',
   pending: 'Pendiente',
 }
+
+export function bytes(n, digits = 1) {
+  if (n === null || n === undefined) return '—'
+  const u = ['B', 'KB', 'MB', 'GB', 'TB']
+  let i = 0
+  let v = n
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
+  return `${v.toFixed(i === 0 ? 0 : digits)} ${u[i]}`
+}
+
+export function cores(n) {
+  if (n === null || n === undefined) return '—'
+  return n < 1 ? `${Math.round(n * 1000)}m` : `${n.toFixed(2)}`
+}
+
+export function uptimeText(s) {
+  if (!s) return '—'
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  return d ? `${d} d ${h} h` : `${h} h ${Math.floor((s % 3600) / 60)} min`
+}

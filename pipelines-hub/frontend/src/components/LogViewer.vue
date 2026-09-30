@@ -6,11 +6,23 @@ import { ACTIVE, STATUS_LABEL, duration } from '../format'
 import Icon from './Icon.vue'
 import StatusIcon from './StatusIcon.vue'
 
+// Dos modos: el de ejecuciones (runId + step) y uno genérico con `loader(cursor)` que usan
+// los logs de pods y de servicios. El loader devuelve {text, cursor, append, available, message}.
 const props = defineProps({
-  runId: { type: [Number, String], required: true },
-  step: { type: Object, required: true },
-  provider: { type: String, required: true },
+  runId: { type: [Number, String], default: null },
+  step: { type: Object, default: null },
+  provider: { type: String, default: 'generic' },
   fileName: { type: String, default: 'log' },
+  loader: { type: Function, default: null },
+  loaderKey: { type: String, default: '' },
+  live: { type: Boolean, default: false },
+  title: { type: String, default: 'Log' },
+  subtitle: { type: String, default: '' },
+  interval: { type: Number, default: 4000 },
+})
+const st = computed(() => st || {
+  id: props.loaderKey || 'log', name: props.title, status: props.live ? 'running' : 'success',
+  duration_s: null, url: null,
 })
 
 const MAX_RENDER = 6000
@@ -19,6 +31,7 @@ const ANSI = /\x1b\[[0-9;]*[A-Za-z]/g
 
 const raw = ref('')
 const offset = ref(0)
+const cursor = ref(null)
 const state = reactive({ loading: true, available: true, message: '', error: '' })
 const opts = reactive({ wrap: true, follow: true, timestamps: false, showAll: false })
 const query = ref('')
@@ -26,7 +39,7 @@ const current = ref(0)
 const openGroups = reactive(new Set())
 const body = ref(null)
 
-const isActive = computed(() => ACTIVE.has(props.step.status))
+const isActive = computed(() => (props.loader ? props.live : ACTIVE.has(st.value.status)))
 
 // ---------- parseo ----------
 const parsed = computed(() => {
@@ -132,21 +145,35 @@ async function fetchLog(reset = false) {
   if (reset) {
     raw.value = ''
     offset.value = 0
+    cursor.value = null
     state.loading = true
     state.error = ''
     openGroups.clear()
     query.value = ''
   }
   try {
-    const chunk = await api.log(props.runId, props.step.id, offset.value, { quiet: true })
-    if (my !== seq) return
-    state.available = chunk.available
-    state.message = chunk.message || ''
-    state.error = ''
-    if (chunk.available) {
-      if (props.provider === 'github') raw.value = chunk.text // GitHub devuelve todo
-      else if (chunk.text) raw.value += chunk.text
-      offset.value = chunk.next_offset
+    if (props.loader) {
+      const chunk = await props.loader(cursor.value)
+      if (my !== seq) return
+      state.available = chunk.available !== false
+      state.message = chunk.message || ''
+      state.error = ''
+      if (state.available) {
+        if (chunk.append) raw.value += chunk.text || ''
+        else raw.value = chunk.text || ''
+        cursor.value = chunk.cursor ?? cursor.value
+      }
+    } else {
+      const chunk = await api.log(props.runId, st.value.id, offset.value, { quiet: true })
+      if (my !== seq) return
+      state.available = chunk.available
+      state.message = chunk.message || ''
+      state.error = ''
+      if (chunk.available) {
+        if (props.provider === 'github') raw.value = chunk.text // GitHub devuelve todo
+        else if (chunk.text) raw.value += chunk.text
+        offset.value = chunk.next_offset
+      }
     }
   } catch (e) {
     if (my === seq) state.error = e.message
@@ -162,9 +189,10 @@ async function fetchLog(reset = false) {
 
 function schedule() {
   clearTimeout(timer)
+  if (props.loader && !props.live) return
   if (!isActive.value && state.available) return
   // Bitbucket entrega el log en vivo; GitHub solo al terminar el job
-  const wait = props.provider === 'github' ? 8000 : 3000
+  const wait = props.loader ? props.interval : props.provider === 'github' ? 8000 : 3000
   timer = setTimeout(() => {
     if (document.hidden) return schedule()
     fetchLog(false)
@@ -173,12 +201,12 @@ function schedule() {
 
 function revealInitial() {
   const { firstError, blocks } = parsed.value
-  if (firstError !== null && props.step.status === 'failed') {
+  if (firstError !== null && st.value.status === 'failed') {
     for (const b of blocks) if (b.type === 'group' && b.lines.some((l) => l.n === firstError)) openGroups.add(b.id)
     nextTick(() => scrollToLine(firstError))
-  } else if (isActive.value || props.step.status === 'failed') {
+  } else if (isActive.value || st.value.status === 'failed') {
     const last = [...blocks].reverse().find((b) => b.type === 'group')
-    if (last && props.step.status === 'failed') openGroups.add(last.id)
+    if (last && st.value.status === 'failed') openGroups.add(last.id)
     nextTick(scrollBottom)
   } else if (body.value) {
     body.value.scrollTop = 0
@@ -231,8 +259,10 @@ function expandAll(open) {
   }
 }
 
-watch(() => props.step.id, () => fetchLog(true), { immediate: true })
-watch(() => props.step.status, (now, before) => {
+watch(() => [st.value.id, props.loaderKey], () => fetchLog(true), { immediate: true })
+watch(() => props.live, (v) => v && schedule())
+defineExpose({ reload: () => fetchLog(true) })
+watch(() => st.value.status, (now, before) => {
   // terminó el paso: traer lo que falte
   if (ACTIVE.has(before) && !ACTIVE.has(now)) fetchLog(false)
   else if (ACTIVE.has(now)) schedule()
@@ -245,9 +275,11 @@ onBeforeUnmount(() => clearTimeout(timer))
   <section class="log card" :class="{ nowrap: !opts.wrap }">
     <header class="log-head">
       <div class="log-title">
-        <StatusIcon :status="step.status" />
-        <h2 class="truncate" :title="step.name">{{ step.name }}</h2>
-        <span class="faint dur">{{ STATUS_LABEL[step.status] }} · {{ duration(step.duration_s) }}</span>
+        <StatusIcon v-if="!loader" :status="st.status" />
+        <h2 class="truncate" :title="st.name">{{ st.name }}</h2>
+        <span v-if="loader" class="faint dur">{{ subtitle }}</span>
+        <span v-else class="faint dur">{{ STATUS_LABEL[st.status] }} · {{ duration(st.duration_s) }}</span>
+        <slot name="tools" />
       </div>
       <div class="log-tools">
         <label class="log-search">
@@ -270,9 +302,9 @@ onBeforeUnmount(() => clearTimeout(timer))
       <div v-if="state.loading && !raw" class="log-msg">Cargando log…</div>
       <div v-else-if="state.error" class="log-msg error-text">{{ state.error }}</div>
       <div v-else-if="!state.available && !raw" class="log-msg">
-        <StatusIcon v-if="isActive" :status="step.status" />
+        <StatusIcon v-if="isActive && !loader" :status="st.status" />
         {{ state.message || 'Log no disponible.' }}
-        <a v-if="step.url" :href="step.url" target="_blank" rel="noopener">Ver en {{ { github: 'GitHub', bitbucket: 'Bitbucket', cloudflare: 'Cloudflare' }[provider] }}</a>
+        <a v-if="st.url" :href="st.url" target="_blank" rel="noopener">Ver en {{ { github: 'GitHub', bitbucket: 'Bitbucket', cloudflare: 'Cloudflare' }[provider] }}</a>
       </div>
       <div v-else-if="!raw" class="log-msg">{{ isActive ? 'Esperando salida…' : 'El paso no generó salida.' }}</div>
 

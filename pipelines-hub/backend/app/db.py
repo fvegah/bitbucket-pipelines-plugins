@@ -215,6 +215,98 @@ class SavedView(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
+class KubeCluster(Base):
+    """Contexto del kubeconfig que se muestra en el visor de Kubernetes."""
+
+    __tablename__ = "kube_clusters"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    context: Mapped[str] = mapped_column(String(300), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class Server(Base):
+    __tablename__ = "servers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    host: Mapped[str] = mapped_column(String(300))
+    port: Mapped[int] = mapped_column(Integer, default=22)
+    username: Mapped[str] = mapped_column(String(100))
+    key_path: Mapped[str | None] = mapped_column(String(300))  # dentro de ~/.ssh montado
+    key_enc: Mapped[str | None] = mapped_column(Text)  # llave privada pegada (cifrada)
+    passphrase_enc: Mapped[str | None] = mapped_column(Text)
+    use_sudo: Mapped[bool] = mapped_column(Boolean, default=True)  # sudo -n para lecturas
+    environment: Mapped[str | None] = mapped_column(String(50))
+    host_key: Mapped[str | None] = mapped_column(String(200))  # huella aceptada (TOFU)
+    status: Mapped[str] = mapped_column(String(20), default="unknown")  # ok | error | unknown
+    last_error: Mapped[str | None] = mapped_column(Text)
+    last_seen_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    snapshot_json: Mapped[str | None] = mapped_column(Text)
+    snapshot_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    services: Mapped[list["Service"]] = relationship(
+        back_populates="server", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class ServerSample(Base):
+    __tablename__ = "server_samples"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    server_id: Mapped[int] = mapped_column(ForeignKey("servers.id", ondelete="CASCADE"),
+                                           index=True)
+    ts: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    cpu_pct: Mapped[float | None] = mapped_column()
+    load1: Mapped[float | None] = mapped_column()
+    cores: Mapped[int | None] = mapped_column(Integer)
+    mem_total: Mapped[int | None] = mapped_column(Integer)
+    mem_used: Mapped[int | None] = mapped_column(Integer)
+    swap_total: Mapped[int | None] = mapped_column(Integer)
+    swap_used: Mapped[int | None] = mapped_column(Integer)
+    disk_total: Mapped[int | None] = mapped_column(Integer)
+    disk_used: Mapped[int | None] = mapped_column(Integer)
+    uptime_s: Mapped[int | None] = mapped_column(Integer)
+    disks_json: Mapped[str | None] = mapped_column(Text)
+
+
+class Service(Base):
+    """Servicio dentro de un servidor: systemd, docker, redis, postgres, sidekiq, etc."""
+
+    __tablename__ = "services"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    server_id: Mapped[int] = mapped_column(ForeignKey("servers.id", ondelete="CASCADE"),
+                                           index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    kind: Mapped[str] = mapped_column(String(20))
+    platform: Mapped[str | None] = mapped_column(String(100))  # Edutecnia, quizkid, ...
+    config_json: Mapped[str] = mapped_column(Text, default="{}")
+    secret_enc: Mapped[str | None] = mapped_column(Text)  # clave de redis/postgres
+    log_json: Mapped[str] = mapped_column(Text, default="{}")  # {type, unit|path|container}
+    status: Mapped[str] = mapped_column(String(20), default="unknown")  # ok|warn|down|unknown
+    summary: Mapped[str | None] = mapped_column(Text)
+    detail_json: Mapped[str | None] = mapped_column(Text)
+    checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    changed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    server: Mapped[Server] = relationship(back_populates="services")
+
+
+class ServiceCheck(Base):
+    __tablename__ = "service_checks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"),
+                                            index=True)
+    ts: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
+    status: Mapped[str] = mapped_column(String(20))
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+
+
 _settings = get_settings()
 engine = create_async_engine(_settings.db_url, connect_args={"timeout": 30})
 

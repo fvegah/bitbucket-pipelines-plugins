@@ -12,6 +12,16 @@ services:
       - "127.0.0.1:8095:8000"
     volumes:
       - hub-data:/data
+      # Infraestructura: solo lectura. El panel usa tu kubeconfig/AWS para el visor de
+      # Kubernetes y tus llaves SSH para monitorear servidores.
+      - ${HOME}/.kube:/kube:ro
+      - ${HOME}/.aws:/aws:ro
+      - ${HOME}/.ssh:/ssh:ro
+    environment:
+      HUB_KUBECONFIG: /kube/config
+      HUB_SSH_DIR: /ssh
+      AWS_CONFIG_FILE: /aws/config
+      AWS_SHARED_CREDENTIALS_FILE: /aws/credentials
     env_file:
       - path: .env
         required: false

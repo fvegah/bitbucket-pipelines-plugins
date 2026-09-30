@@ -6,6 +6,9 @@ import RunDetailView from './views/RunDetailView.vue'
 import EnvironmentsView from './views/EnvironmentsView.vue'
 import AccountsView from './views/AccountsView.vue'
 import PullRequestsView from './views/PullRequestsView.vue'
+import KubernetesView from './views/KubernetesView.vue'
+import ServersView from './views/ServersView.vue'
+import ServerDetailView from './views/ServerDetailView.vue'
 import PullRequestDetailView from './views/PullRequestDetailView.vue'
 import './styles.css'
 
@@ -17,6 +20,9 @@ const router = createRouter({
     { path: '/prs', name: 'prs', component: PullRequestsView, meta: { title: 'Pull requests' } },
     { path: '/prs/:id', name: 'pr', component: PullRequestDetailView, props: true, meta: { title: 'Pull request' } },
     { path: '/entornos', name: 'environments', component: EnvironmentsView, meta: { title: 'Entornos' } },
+    { path: '/k8s', name: 'k8s', component: KubernetesView, meta: { title: 'Kubernetes' } },
+    { path: '/servidores', name: 'servers', component: ServersView, meta: { title: 'Servidores' } },
+    { path: '/servidores/:id', name: 'server', component: ServerDetailView, props: true, meta: { title: 'Servidor' } },
     { path: '/cuentas', name: 'accounts', component: AccountsView, meta: { title: 'Cuentas' } },
   ],
 })

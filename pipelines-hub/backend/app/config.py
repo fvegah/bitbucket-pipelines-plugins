@@ -33,6 +33,12 @@ class Settings(BaseSettings):
 
     http_timeout: float = 30
 
+    # Infraestructura (montados en el contenedor en modo solo lectura)
+    kubeconfig: Path = Path("~/.kube/config")
+    ssh_dir: Path = Path("~/.ssh")
+    server_sample_interval: int = 60
+    server_history_days: int = 7
+
     @property
     def db_url(self) -> str:
         return f"sqlite+aiosqlite:///{self.data_dir / 'hub.db'}"
